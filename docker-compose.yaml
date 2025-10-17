@@ -1,0 +1,43 @@
+services:
+  traefik:
+    image: traefik:v3.5
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker.exposedbydefault=false" # by default treafik will inspect docker socket, we want to define it explicitly
+      - "--log.level=info"
+    ports:
+      - "80:80"
+      - "8080:8080" #dashboard - only w/o auth in test phase
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  aspnet:
+    image: edihasler/umbracobackendloginbug-aspnet:latest
+    environment:  
+        - ASPNETCORE_ENVIRONMENT=Production
+        - ASPNETCORE_URLS=http://+:8081
+    build:
+      context: aspnet/UmbracoBackendLoginBug/
+    restart: always
+    depends_on:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.dotnet.loadbalancer.server.port=8081"
+      - "traefik.http.routers.dotnet.rule=PathPrefix(`/umbraco`)" #chosen over catch all route of nuxt service
+  nuxt:
+    image:  edihasler/umbracobackendloginbug-nuxt:latest
+    environment:  
+      - NUXT_DOTNET_PROXY_URL="http://dotnet:8081/" #dockers internal dns - even though the dotnet container’s real IP changes, the name dotnet always resolves to the right container because Docker manages it
+    build:
+      context: nuxt/
+      #dockerfile: nuxt/Dockerfile
+    depends_on:
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nuxt.rule=PathPrefix(`/`)" # catch all route
+      - "traefik.http.routers.nuxt.entrypoints=web"
+      - "traefik.http.services.nuxt.loadbalancer.server.port=3000"
+
