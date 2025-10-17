@@ -7,3 +7,10 @@ Steps to reproduce:
 - run the backend aspnet application, where umbraco is running - runs on localhost:8081
 - open localhost:3000/umbraco
 - login with username: foobar@gmail.com password: foobarfoobar
+
+
+## with compose and traefik it works
+- docker compose build
+- docker compose up
+- localhost/umbraco -> foobar@gmail.com password: foobarfoobar
+-> so the problem is the nuxt proxy
